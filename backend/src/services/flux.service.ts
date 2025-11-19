@@ -6,28 +6,41 @@ export async function generateImage(prompt: string): Promise<string> {
         : prompt;
 
     const HF_URL =
-      "https://hf.space/embed/black-forest-labs/FLUX.1-schnell/api/predict";
+      "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell";
 
     const response = await fetch(HF_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.FAL_KEY}`,
       },
       body: JSON.stringify({
-        data: [fixedPrompt],
+        inputs: fixedPrompt,
+        parameters: {
+          width: 768,
+          height: 768,
+        },
       }),
     });
+
+    if (response.status === 503) {
+      throw new Error("Модель загружается, попробуй позже");
+    }
 
     if (!response.ok) {
       const t = await response.text();
       throw new Error("HF Error: " + t);
     }
 
-    const json = await response.json();
+    const contentType = response.headers.get("content-type");
 
-    // путь к изображению
-    const base64 = json.data[0].split(",")[1];
+    if (!contentType?.includes("image")) {
+      const txt = await response.text();
+      throw new Error("HF не вернул изображение: " + txt);
+    }
 
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
     return base64;
   } catch (err) {
     console.error("HF ERROR:", err);
