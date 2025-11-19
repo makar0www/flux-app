@@ -17,15 +17,16 @@ export default async function telegramRoutes(fastify: FastifyInstance) {
       return reply.send({ ok: true });
     }
 
+    // Сообщение пользователю
     await sendText(chatId, "⏳ Генерирую изображение...");
 
     try {
+      // Генерация через HuggingFace FLUX
       const base64 = await generateImage(text);
 
-      // правильный формат PNG
-      const telegramImage = `data:image/png;base64,${base64}`;
+      // ВАЖНО: передаём ЧИСТЫЙ base64
+      await sendPhoto(chatId, base64);
 
-      await sendPhoto(chatId, telegramImage);
     } catch (error) {
       console.error("Ошибка генерации:", error);
       await sendText(chatId, "❌ Ошибка генерации изображения");
