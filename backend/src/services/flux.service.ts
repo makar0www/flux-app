@@ -5,14 +5,17 @@ fal.config({
 });
 
 export async function generateImage(prompt: string): Promise<string> {
-  const result = await fal.run("fal-ai/flux-pro/v1.1-lite", {
-    input: {
-      prompt,
-      image_size: "1024x1024",
-    },
-  });
+  const result: any = await fal.run("fal-ai/flux/schnell", {
+  input: {
+    prompt,
+    image_size: "square_hd",
+  },
+});
 
-  const images = result.data?.images;
+  const images =
+    result.data?.images ||
+    result.output?.images ||
+    result.images;
 
   if (!images || images.length === 0) {
     throw new Error("Fal/Flux не вернул изображение");
