@@ -1,18 +1,20 @@
 export async function generateImage(prompt: string): Promise<string> {
   try {
-    // фикс коротких запросов
+    // фикс коротких промптов
     const fixedPrompt =
       prompt.trim().length < 5
         ? `high quality detailed photo of ${prompt}, ultra realistic`
         : prompt;
 
+    // новый рабочий HF endpoint (официальный)
     const HF_URL =
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell";
+      "https://router.huggingface.co/hf-inference/black-forest-labs/FLUX.1-schnell";
 
     const response = await fetch(HF_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // Authorization НЕ нужен для FREE
       },
       body: JSON.stringify({
         inputs: fixedPrompt,
@@ -23,9 +25,9 @@ export async function generateImage(prompt: string): Promise<string> {
       }),
     });
 
-    // Модель прогревается → повторить позже
+    // модель загружается (обычно 5–20 сек)
     if (response.status === 503) {
-      throw new Error("Модель загружается, попробуй через 5 секунд");
+      throw new Error("Модель загружается, попробуй снова через пару секунд");
     }
 
     if (!response.ok) {
@@ -40,7 +42,7 @@ export async function generateImage(prompt: string): Promise<string> {
       throw new Error("HF вернул не изображение");
     }
 
-    // ответ — бинарная картинка
+    // преобразуем байты в base64
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString("base64");
