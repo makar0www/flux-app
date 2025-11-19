@@ -10,20 +10,27 @@ export default async function telegramRoutes(fastify: FastifyInstance) {
     if (!message) return reply.send({ ok: true });
 
     const chatId = message.chat.id;
-    const text = message.text;
+    const text = message.text?.trim();
 
     if (!text) {
       await sendText(chatId, "Отправь текст для генерации!");
       return reply.send({ ok: true });
     }
 
+    // Сообщение о генерации
     await sendText(chatId, "⏳ Генерирую изображение...");
 
     try {
+      // Генерация через FAL/Flux
       const base64 = await generateImage(text);
-      await sendPhoto(chatId, base64);
+
+      // ВАЖНО: Telegram принимает только data:image/png;base64,<...>
+      const telegramImage = `data:image/png;base64,${base64}`;
+
+      // Отправка
+      await sendPhoto(chatId, telegramImage);
     } catch (error) {
-      console.error(error);
+      console.error("Ошибка генерации:", error);
       await sendText(chatId, "❌ Ошибка генерации изображения");
     }
 
