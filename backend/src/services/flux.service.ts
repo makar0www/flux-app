@@ -2,11 +2,11 @@ export async function generateImage(prompt: string): Promise<string> {
   try {
     const fixedPrompt =
       prompt.trim().length < 5
-        ? `high quality detailed photo of ${prompt}, ultra realistic`
+        ? `ultra detailed photo of ${prompt}, 4k realistic`
         : prompt;
 
     const HF_URL =
-      "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell";
+      "https://hf.space/embed/black-forest-labs/FLUX.1-schnell/api/predict";
 
     const response = await fetch(HF_URL, {
       method: "POST",
@@ -14,32 +14,19 @@ export async function generateImage(prompt: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        inputs: fixedPrompt,
-        parameters: {
-          width: 768,
-          height: 768,
-        },
+        data: [fixedPrompt],
       }),
     });
 
-    if (response.status === 503) {
-      throw new Error("Модель загружается, попробуй через 5 секунд");
-    }
-
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error("HF Error: " + text);
+      const t = await response.text();
+      throw new Error("HF Error: " + t);
     }
 
-    const contentType = response.headers.get("content-type");
-    console.log("HF content-type:", contentType);
+    const json = await response.json();
 
-    if (!contentType?.includes("image")) {
-      throw new Error("HF вернул не изображение");
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    // путь к изображению
+    const base64 = json.data[0].split(",")[1];
 
     return base64;
   } catch (err) {
