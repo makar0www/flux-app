@@ -1,53 +1,53 @@
-import { fal } from "@fal-ai/client";
-
-fal.config({
-  credentials: process.env.FAL_KEY!,
-});
-
-async function runWithTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: NodeJS.Timeout;
-
-  const timeout = new Promise<never>((_, reject) =>
-    timer = setTimeout(() => reject(new Error("FAL timeout")), ms)
-  );
-
-  const result = await Promise.race([promise, timeout]);
-  clearTimeout(timer!);
-  return result as T;
-}
-
 export async function generateImage(prompt: string): Promise<string> {
   try {
     // фикс коротких запросов
     const fixedPrompt =
       prompt.trim().length < 5
-        ? `high quality photo of ${prompt}, detailed, realistic`
+        ? `high quality detailed photo of ${prompt}, ultra realistic`
         : prompt;
 
-    const result: any = await runWithTimeout(
-      fal.run("fal-ai/flux/schnell", {
-        input: {
-          prompt: fixedPrompt,
-          image_size: "square_hd",
+    const HF_URL =
+      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell";
+
+    const response = await fetch(HF_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inputs: fixedPrompt,
+        parameters: {
+          width: 768,
+          height: 768,
         },
       }),
-      30000
-    );
+    });
 
-    const images = result?.output?.images;
-    if (!images || !images[0]?.url) {
-      throw new Error("Flux не вернул изображение");
+    // Модель прогревается → повторить позже
+    if (response.status === 503) {
+      throw new Error("Модель загружается, попробуй через 5 секунд");
     }
 
-    const imageUrl = images[0].url;
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error("HF Error: " + err);
+    }
 
-    const response = await fetch(imageUrl);
-    const buffer = await response.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
+    const contentType = response.headers.get("content-type");
+    console.log("HF content-type:", contentType);
+
+    if (!contentType?.includes("image")) {
+      throw new Error("HF вернул не изображение");
+    }
+
+    // ответ — бинарная картинка
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString("base64");
 
     return base64;
   } catch (e) {
-    console.error("FAL ERROR:", e);
+    console.error("HF ERROR:", e);
     throw new Error("Ошибка генерации изображения");
   }
 }

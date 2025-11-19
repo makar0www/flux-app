@@ -11,7 +11,7 @@ export async function sendText(chatId: number, text: string) {
   });
 }
 
-export async function sendPhoto(chatId: number, base64: string) {
+export async function sendPhoto(chatId: number, photoBase64: string) {
   const url = `https://api.telegram.org/bot${process.env.TG_BOT_TOKEN}/sendPhoto`;
 
   await fetch(url, {
@@ -19,7 +19,7 @@ export async function sendPhoto(chatId: number, base64: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
-      photo: `data:image/jpeg;base64,${base64}`,
+      photo: photoBase64, // <-- теперь НЕ изменяем
     }),
   });
 }
